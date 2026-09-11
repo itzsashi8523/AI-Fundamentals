@@ -1,0 +1,105 @@
+##Good prompts are clear about task, context, and format. Next, explore System and user messages. You’re off to a strong start.
+
+A prompt is just the text you send the model. The quality of the answer tracks the quality of the prompt more than anything else, and the good news is that a strong prompt isn't clever or long. It's clear. Three pieces do most of the work:
+
+    The task: - what you actually want done. "Summarize this", "rewrite this email", "explain this command".
+    The context: - what the model needs to know to do it well. Who the answer is for, the text it should work from, any constraint that matters.
+    The desired format: - the shape you want back. One sentence, a bullet list, a code block, plain English with no jargon.
+
+#Leave out the task and the model guesses at your intent. Leave out the format and you get whatever length and shape it defaults to, which is often a wall of text you then have to trim yourself.
+
+#Vague vs specific
+Watch what happens when you go from a bare instruction to one that names the task, the audience, and the format:
+
+    Vague: explain tar
+    
+    Specific: Explain what the command tar -xzf backup.tar.gz does, in two sentences, for someone new to Linux
+              The vague version might get you a history of the tar format, a table of every flag, or three paragraphs you didn't want. The specific version says exactly what to explain, how long the answer should be, and who it's for. Same model, very different reply.
+              
+##System and user messages
+You already saw that a request carries a messages list, where each message has a role and content. So far every message used the user role - that's you, asking. There's a second role worth knowing, and it changes how the whole conversation behaves: system.
+
+#The system message sets behavior
+A system message isn't a question. It's a standing instruction that tells the model how to act for the rest of the conversation: what role to play, what tone to use, what rules to follow. The user message is the actual request. The model reads the system message first, then answers the user message under those rules.
+
+Think of it as the difference between briefing someone before a task and then handing them the task:
+system - "You are a terse Linux tutor. Answer in one sentence and never apologize."
+user - "What does chmod +x do?"
+What it looks like
+
+Both messages go in the same messages list, system first:
+json
+{
+  "model": "glm-5.2",
+  "messages": [
+    {"role": "system", "content": "You are a terse Linux tutor. Answer in one sentence, no preamble."},
+    {"role": "user", "content": "What does chmod +x do?"}
+  ]
+}
+---
+SYSTEM = "నువ్వు ఎలా behave చేయాలి?"  |   ఎలా answer చేయాలి?
+
+USER   = "నువ్వు ఏం చేయాలి?"                        |  ఏం answer చేయాలి?
+
+SYSTEM:
+You are a senior AWS engineer.
+Explain things in simple English.
+Always give a real-world example.
+
+USER:
+What is an ALB?
+---
+---> Ask that same user question with no system message and you'll likely get a friendly paragraph with a lead-in. With the system message above, you get a single tight sentence. The user question didn't change - the framing did.
+
+Being specific:
+The single biggest upgrade you can make to a prompt is to be specific. A vague prompt forces the model to guess what you meant, and it guesses at an average of everything it has seen. A specific prompt removes the guessing.
+
+Try it from the command line:
+You don't need curl for a quick prompt. The claude CLI has a headless mode: give it -p and a prompt in quotes and it sends that one message, prints the reply, and exits - no chat session to manage.
+
+Ex: 
+bash - claude -p "explain git rebase"
+#That's the vague version. It might hand you a tutorial, a warning about rewriting history, or a wall of examples. Now make the same request specific about the task, the length, and the audience:
+
+bash - claude -p "In two sentences, explain what git rebase does and when to use it, for someone who already knows git merge"
+#The second prompt tells the model exactly what to compare against, how long to be, and who's reading. You get a focused answer instead of a lucky one.
+
+What "specific" actually means:
+You don't specify by writing more words. You specify by removing ambiguity. A few things that almost always help:
+
+--- Name the length or format. "in two sentences", "as a bullet list", "just the command, no explanation".
+
+--- Give the context to work from. Paste the error, the code, or the text. "Why does this fail" is guesswork; "Why does this command fail: tar -xzf report.tar.gz" is answerable.
+
+--- State the audience or goal. "for a beginner", "for a code review", "so I can put it in a README".
+
+--- Say what to leave out. "no preamble", "don't explain the basics", "skip the history".
+
+#Zero-shot vs few-shot
+
+A zero-shot prompt asks the model to do something with no examples. You just describe the task and hope your words are enough:
+
+#claude -p "Classify this support message as billing, technical, or other: My card was charged twice this month"
+That often works. But when the answer has a shape you care about (a label, a format, a particular style), plain words leave room to guess. The model might reply billing, or This looks like a billing issue., or a full paragraph. You asked for a category and got a conversation.
+
+Few-shot: show, then ask
+A few-shot prompt gives the model a few worked examples before the real question. Instead of only describing the task, you demonstrate it:
+
+#claude -p "Classify each message as billing, technical, or other.
+
+Message: My card was charged twice
+Category: billing
+
+Message: The app crashes when I upload a photo
+Category: technical
+
+Message: Do you have an office in Berlin?
+Category:"
+The model reads your two examples, picks up the pattern (one message in, one lowercase label out), and answers the last one the same way: other. You never explained the format in words. The examples did it.
+
+Why examples steer(నడిపించు) the model: ?
+Recall from the first topic that an LLM predicts the most plausible continuation of the text it's given. When you show it two lines that both end in a single lowercase category, the most plausible next line is another single lowercase category. Examples don't teach the model new knowledge. They set the pattern it continues.
+
+So the rule of thumb is: if a clear instruction gets you what you want, stay zero-shot - it's shorter and cheaper. Reach for few-shot when the output shape matters and words alone keep missing it.
+
+Next: what separates examples that steer(నడిపించు) the model well from ones that confuse it.

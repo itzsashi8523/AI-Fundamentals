@@ -1,0 +1,29 @@
+Giving the AI a role
+Lesson:
+One sentence at the top of a prompt changes everything that follows: tell the model who it is. "You are a senior Linux administrator." "You are a patient math tutor." "You are a security reviewer." This is called setting a role, or a persona, and it steers both what the model leans on and how it says it.
+
+It works because of how the model was built. It learned from an enormous mix of writing - casual forum threads, dense technical manuals, tutorials, code. A role points it at the slice that matches. Tell it it's a senior administrator and it pulls from the manual side of what it saw, not the desktop-help side.
+
+The same question, with and without a role
+Ask a bare question:
+
+bash
+
+claude -p "How do I find what is using disk space?"
+You get a general answer, maybe aimed at someone on a laptop. Now lead with a role:
+
+bash
+
+claude -p "You are a senior Linux server administrator. How do I find what is using disk space?"
+The reply shifts toward server tools like du, df, and ncdu, assumes you're in a terminal, and drops the hand-holding. Same question, sharper answer, because you pointed the model at the right expertise before asking.
+
+A role sets who the model is. Two more dials set how it talks: the tone you want and the audience you're writing for. Both go in the same place, a sentence in your prompt, and both change the wording without changing the facts.
+
+Audience level is the one you'll reach for most. "Explain this to a beginner" and "explain this to an expert" send the same model in two directions. For a beginner it defines terms, avoids jargon, and reaches for a plain analogy. For an expert it skips the basics and gets to the specifics.
+
+Example:
+claude -p "Explain what a reverse proxy is to an experienced backend engineer"
+
+claude -p "You are a senior Linux administrator. Explain how swap memory works to a junior colleague, in plain language."
+
+Tone and audience shape how an AI explains facts, without changing them. Next: Write a role prompt for a real task. You’re building useful prompt skills.

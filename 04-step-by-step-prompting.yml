@@ -1,0 +1,97 @@
+Why step-by-step helps:
+A model generates its answer one chunk at a time, and each chunk it writes becomes part of what it reads for the next chunk. When a problem takes several steps to solve, the words the model has already written are the only place it can "hold" the intermediate work. So if you ask only for the final answer, it has to jump straight to a result with nowhere to keep the middle steps, and on anything with more than one step it often guesses wrong.
+
+Give it room to write the steps out and the accuracy changes. Each step it writes down feeds the next one, so the model builds the answer on its own working instead of leaping to a conclusion.
+
+Step-by-step prompting gives a model space to build toward an answer instead of guessing. Next: Asking for reasoning. Keep going—you’re building a useful habit.
+
+అసలు idea: ఏంటి?
+
+AI model ఒకేసారి మొత్తం answer తయారు చేయదు. అది కొంచెం కొంచెంగా (chunk by chunk / token by token) answer generate చేస్తుంది.
+
+ముఖ్యమైన విషయం:
+
+Model ఇంతకుముందు రాసినది, తర్వాతి భాగాన్ని generate చేసేటప్పుడు input/context లో భాగమవుతుంది.
+
+అంటే model తనకు తానే రాసుకున్న previous work మీద ఆధారపడి next step చేస్తుంది.
+
+కానీ complex problem అయితే?
+
+ఉదాహరణకు:
+
+ఒక product ధర ₹1,000.
+20% discount ఇచ్చారు.
+Discount తర్వాత 18% GST వేశారు.
+Final price ఎంత?
+
+Model intermediate work లేకుండా వెంటనే final answerకి jump చేస్తే mistake వచ్చే అవకాశం ఎక్కువ.
+
+కానీ ఇలా steps రాస్తే:
+
+Step 1:
+20% discount = ₹200
+
+Step 2:
+Discount తర్వాత price = ₹1,000 − ₹200 = ₹800
+
+Step 3:
+18% GST = ₹144
+
+Step 4:
+Final price = ₹800 + ₹144 = ₹944
+
+ఇక్కడ ప్రతి step తర్వాతి stepకి foundation అవుతుంది.
+
+Question
+   ↓
+Step 1
+   ↓
+Step 2  ← Step 1 ఆధారంగా
+   ↓
+Step 3  ← Step 2 ఆధారంగా
+   ↓
+Final Answer
+
+---> The model writes its intermediate steps as text in the context window.
+---> It reads those previous steps when generating the next step.
+---> This helps it solve multi-step problems instead of jumping directly to the final answer.
+
+---> Context window is the amount of text/information the model can see and use at one time.
+---> It includes the user's prompt, previous conversation, and the model's generated text available for the current task.
+---> The model uses this context to understand the conversation and generate the next response.
+
+When not to bother:
+Step-by-step is not free. It makes the reply longer, which costs more tokens and takes longer to come back. For a question with no steps in it, that is pure overhead and can even bury a simple answer in padding.
+
+Skip it for straight lookups and one-shot tasks:
+
+"What port does SSH use by default?"
+"Give me the curl flag that follows redirects."
+"Rewrite this sentence to be shorter."
+There is nothing to reason through, so asking for reasoning only slows the answer down. Reach for step-by-step when the question has a chain of steps in it, and leave it off when it does not.
+
+Example:
+---------
+Drop one of these onto the end of a multi-step question and the model writes out the intermediate steps instead of jumping to a result. For example:
+
+Prompt:
+Our nightly backup is 40 GB and the link uploads at 50 MB/s. Roughly how long
+does the upload take? Think step by step.
+
+#It will convert the units, do the division, and then state the time, so you can see each step and catch a wrong turn if there is one.
+
+# claude -p "A service writes about 2.5 GB of logs per day. You have 90 GB of free space and logs are never rotated or deleted. Roughly how many days until the disk fills up, and what date would that be if it starts filling today? Think step by step." > /root/reasoning/answer.txt
+
+#root@escbash-lab:~# cat /root/resoning/answer.txt
+
+#cat: /root/resoning/answer.txt: No such file or directory
+
+#root@escbash-lab:~# cat /root/reasoning/answer.txt
+90 GB ÷ 2.5 GB/day = **36 days** exactly.
+
+Starting **2026-09-11**, 36 days lands on **October 17, 2026**:
+
+- Sept 11 → Sept 30 = 19 days
+- + 17 days into October = **Oct 17**
+
+#That's the fill date assuming a perfectly steady 2.5 GB/day. In practice, real margin depends on log volume variance — if the rate drifts up even slightly (e.g. spikes to 3 GB/day), it'd fill in ~30 days instead. With no rotation/cleanup in place, I'd treat this as a fire-and-urgency number: you have about a month of headroom.
