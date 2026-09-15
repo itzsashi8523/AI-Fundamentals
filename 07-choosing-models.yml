@@ -1,0 +1,84 @@
+Not all models are equal
+Lesson
+Every request you've sent so far named a model, and until now the choice didn't matter much. It does matter. The models available to you are not interchangeable: they differ in how fast they answer, how good the answer is on a hard problem, and how big the model is. Those three pull against each other.
+
+The three things that trade off
+Speed. A smaller model returns its reply faster and can handle far more requests in the same amount of time. If you're calling the model in a loop over a thousand rows, speed is the whole game.
+Quality. On a genuinely hard task - tricky reasoning, careful code, a problem with several steps - a stronger model gets it right more often. On an easy task you often can't tell the models apart at all.
+Size. Bigger models (more parameters) tend to be more capable, but they cost more to run and answer more slowly. Size is roughly the price you pay for the extra capability.
+You rarely get all three at once. A fast, small model and a slower, stronger model are two different tools, and picking well means knowing which one the job in front of you actually needs.
+
+Why there isn't one "best" model
+It's tempting to just always reach for the strongest model, but that's usually the wrong habit. On a simple task the strong model spends more time and (in production, where you pay per token) more money to produce an answer no better than the cheap model would have given you. And when you're firing off many requests, the slower model can turn a job that took seconds into one that takes minutes.
+
+So the useful question is never "which model is best?" It's "which model is enough for this task?" The rest of this topic answers that: what each of the five lab models is good for, and how to match one to a task.
+
+This is a different split from the one you met in the basics. There, the line was open versus frontier - who built the model and whether you can run it yourself. All five models here are open. The split now is about speed and strength among models you already have access to.
+
+wrap-up:
+Models trade off speed, strength, and size, so the best choice is the model that is enough for the task. Next: The five lab models. See you there.
+
+The five lab models
+Lesson
+You have five open models available. Here's a plain-language sense of what each one is for. Treat these as rough, honest generalizations, not hard rules: real behavior depends on the task, and the only way to be sure for your task is to try a couple and compare (which you'll do in a moment).
+
+Model	Rough character	Reach for it when
+deepseek-v4-flash	Fast, cheap, general	You want a quick, solid answer to an everyday request
+deepseek-v4-pro	Deeper reasoning, slower	The problem has several steps or needs careful thinking
+glm-5.2	Strong all-rounder	You want a capable general model and aren't sure which to pick
+gpt-oss-120b	Large open model	You want extra capacity from a big model and can wait a little
+minimax-m3	Quick and concise	You want short, to-the-point replies at speed
+Reading the table
+Notice the pattern from the previous node showing up. deepseek-v4-flash and minimax-m3 sit on the fast, light end - great defaults for simple, high-volume work. deepseek-v4-pro and gpt-oss-120b sit toward the heavier, more capable end, where you trade some speed for a better shot at a hard problem. glm-5.2 is a sensible middle-ground pick when you have no strong reason to prefer one of the others.
+
+Why these are only starting points
+These labels are a place to start, not a verdict. Model families get updated, and a model that's "quick and concise" on one kind of prompt can surprise you on another. Benchmarks give you a general ranking, but they're measured on standard test sets, not on your exact task with your exact prompt.
+
+That's why the honest workflow is to pick one based on the character above, see if the result is good enough, and only reach for a heavier model if it isn't. You already know how to name any of these in a request: it's the model field you've set on every call so far. Swapping models is a one-word change.
+
+Wrap-up
+Core idea: start with a model that fits task, then test results before reaching for more power. Next, Matching a model to the task. You’re building good instincts—keep going.
+
+Matching a model to the task
+Lesson
+With a feel for the five models, the decision comes down to one question about the task: is this simple and high-volume, or hard and one-off? That split points you at the right end of the lineup almost every time.
+
+Simple or high-volume: go fast and cheap
+When the task is easy for a model - reformatting text, extracting a field, writing a short summary, answering a quick factual question - a fast model handles it just as well as a strong one. Reach for deepseek-v4-flash or minimax-m3.
+
+This matters most when volume is high. Classifying ten thousand support tickets, or tagging every row in a dataset, means ten thousand calls. A model that answers in a fraction of the time finishes the job in a fraction of the time, and in production (where you pay per token) at a fraction of the cost. The small quality gap on an easy task isn't worth the speed and cost you'd give up.
+
+Hard or one-off: bring in the stronger model
+When the task needs real thinking - debugging a subtle problem, reasoning across several steps, writing careful code, weighing tradeoffs - a stronger model earns its keep. Reach for deepseek-v4-pro or gpt-oss-120b. Here the extra time is worth it, because a wrong answer costs you more than the wait.
+
+One-off tasks tilt the same way. If you're asking once, the difference between a fast reply and a slightly slower one barely registers, so you may as well give the harder question to a model with a better shot at getting it right.
+
+The habit: try the cheap one first
+When you're unsure, don't agonize. Start with a fast, cheap model and look at the result. If it's good enough, you're done - you got your answer quickly and spent almost nothing. If it falls short, move up to a stronger model and compare.
+
+This beats defaulting to the biggest model every time. Most tasks are easier than they look, and you'll be surprised how often the cheap model is already enough. Reserve the heavy models for the moments that actually need them.
+
+Next you'll do exactly that: send one real prompt to two different models and put their answers side by side.
+
+Wrap-up
+Match model strength to task difficulty and volume. Next, Compare two models on one prompt. You’re building a useful instinct—keep going.
+
+Examples:
+mkdir -p /root/compare
+curl -s "$OPENAI_BASE_URL/v1/chat/completions" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "deepseek-v4-flash", "messages": [{"role": "user", "content": "Explain the difference between a process and a thread in two sentences"}]}' \
+  | jq -r '.choices[0].message.content' > /root/compare/flash.txt
+  
+O/P:
+A process is an independent program execution that runs in its own isolated memory space, making it heavyweight and robust to failures from other processes. A thread is a lighter-weight execution unit that lives within a process and shares that process's memory and resources, enabling faster, concurrent tasks but with less isolation and higher risk of interference
+  
+curl -s "$OPENAI_BASE_URL/v1/chat/completions" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "deepseek-v4-pro", "messages": [{"role": "user", "content": "Explain the difference between a process and a thread in two sentences"}]}' \
+  | jq -r '.choices[0].message.content' > /root/compare/pro.txt
+  
+O/P:
+A process is an independent execution unit with its own separate memory space and resources, providing strong isolation. A thread is a lighter-weight execution unit that lives within a process, sharing that process's memory and resources, which enables faster communication and context switching.
