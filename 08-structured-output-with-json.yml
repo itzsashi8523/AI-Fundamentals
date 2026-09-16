@@ -1,0 +1,63 @@
+Why structured output:
+So far you've read the model's replies with your own eyes. A paragraph of prose is fine for a person to read, but the moment you want a program to use the answer, prose gets in the way. Code can't reliably pull a name out of a sentence like "Sure! The customer seems to be Priya and her email is priya@acme.io." A friendly wrapper, a stray "Sure!", a reworded reply the next time you run it - any of these breaks code that expects the value in a fixed place.
+
+What code wants instead is a predictable shape: the same fields, in the same place, every time. That shape is JSON.
+
+Prose versus a parseable object
+Ask a model to pull the contact details out of a message and it might answer:
+
+The name is Priya Nair and the email is priya@acme.io. She's asking about billing.
+Readable, but to get the email your code has to guess where it sits in the sentence. Ask for the same thing as JSON and you get:
+
+
+{"name": "Priya Nair", "email": "priya@acme.io", "topic": "billing"}
+Now the email is always at the email field. Your program reads it by name, not by scanning words. Run it a hundred times and the field is always there.
+
+Where this shows up
+Any time an LLM sits inside a larger system, its output feeds the next step: routing a support ticket to the right queue, filling a row in a database, deciding which function to call. Every one of those steps needs values it can look up by name, not a paragraph to interpret. JSON is the common language for passing data between programs, so a model that speaks JSON drops straight into code you already write.
+
+Asking a model for JSON
+Lesson
+A model returns JSON when you ask it to, and the ask has to be specific. Two things make the difference between clean JSON and a paragraph with some braces in it: naming the exact fields you want, and showing the shape you expect.
+
+Name the fields and show the shape
+Don't just say "return JSON." Say which keys you want and give a tiny example of the object. A prompt that works looks like this:
+
+text
+
+Extract the sender's name, email, and topic from the message below.
+Return ONLY a JSON object with the keys name, email, and topic. No other text.
+Example: {"name": "Sam Lee", "email": "sam@acme.io", "topic": "refund"}
+
+Message: Hi, this is Priya Nair (priya@acme.io). I have a question about my bill.
+Two habits are doing the work here. First, the word ONLY with "No other text" tells the model not to wrap the answer in a friendly sentence. Second, the one-line example fixes the exact keys and format, so the model copies that shape instead of inventing its own.
+
+Models still add stray text sometimes
+Even with a strict prompt, a model may slip. Common failures:
+
+A lead-in like "Here is the JSON:" before the object.
+Wrapping the object in a Markdown code fence (triple backticks).
+An extra trailing sentence after the closing brace.
+This is why you never assume the reply is clean. You validate it before your code trusts it, which is exactly what jq is for - you met jq back when you pulled choices[0].message.content out of a response. If jq can parse the text, it's real JSON. If it errors, the model added stray text and you tell it, even more firmly, to return only the object.
+
+# curl -sS "$OPENAI_BASE_URL/v1/chat/completions" -H "Authorization: Bearer $OPENAI_API_KEY" -H "Content-Type: application/json" -d '{"model":"glm-5.2","messages":[{"role":"user","content":"Extract sender name, email, topic. Return ONLY JSON with keys name, email, topic. Example: {\"name\":\"Sam Lee\",\"email\":\"sam@acme.io\",\"topic\":\"refund\"}. Message: Hi, this is Priya Nair (priya@acme.io). I have a question about my bill."}]}' | jq -r '.choices[0].message.content'
+
+# curl -sS "$OPENAI_BASE_URL/v1/chat/completions" -H "Authorization: Bearer $OPENAI_API_KEY" -H "Content-Type: application/json" -d '{"model":"glm-5.2","messages":[{"role":"user","content":"Extract sender name, email, topic. Return ONLY JSON with keys name, email, topic. Example: {\"name\":\"Sam Lee\",\"email\":\"sam@acme.io\",\"topic\":\"refund\"}. Message: Hi, this is Priya Nair (priya@acme.io). I have a question about my bill."}]}' | jq -r '.choices[0].message.content' | jq .
+{
+  "name": "Priya Nair",
+  "email": "priya@acme.io",
+  "topic": "bill"
+}
+
+EX:
+root@escbash-lab:~# claude -p 'Extract the sender as JSON with keys name, email, topic. Return ONLY the JSON object, no code fence, no other text. Message: "Hey, this is Sasi Kanth from India. You can reach me at sasi@compurotech.in - I am trying to apply menthoplus but due to headache i am not able to do it."' | jq . > /root/structured/contact.json
+root@escbash-lab:~# cat /root/structured/contact.json 
+{
+  "name": "Sasi Kanth",
+  "email": "sasi@compurotech.in",
+  "topic": "Applying for Menthoplus but couldn't due to headache"
+}
+
+Question:
+You need a model's answer inside a program that reads the sender's email by name. What is the most reliable way to get output your code can use?
+A)Prompt it to return ONLY a JSON object with named fields, then validate with `jq`
