@@ -1,0 +1,146 @@
+What tool calling is?:
+
+Back in the basics you learned what a model really does: it predicts text. It can't run code, open a file, or look anything up. Ask it "what's the weather in Tokyo right now" and it has no live data, so it either guesses or tells you it can't know. That's a hard wall for anything that needs a real answer.
+
+Tool calling is how you get past that wall.
+
+The core idea
+You tell the model about functions your program can run. A function to fetch the weather. A function that queries your database. A calculator. Each one has a name, a plain description of what it does, and the inputs it expects.
+
+The model still can't run any of them. What it can do is ask you to. When a question needs live data or real computation, instead of answering with text the model replies "please call get_weather with city set to Tokyo". Your code runs the real function, gets the real result, and hands it back. Then the model writes the final answer using that result.
+
+So the split is simple:
+
+The model decides which function to call and what arguments to pass.
+Your program actually runs the function and returns the result.
+The model never touches your code, your database, or the internet. It only ever produces text. Tool calling just means some of that text is a structured request for you to run something, rather than a finished answer.
+
+Why this matters
+This one mechanism is what turns a text predictor into something useful in the real world. With tools defined, an assistant can:
+
+Fetch live data: weather, stock prices, a row from your database.
+Do exact math instead of guessing at arithmetic.
+Take actions: send an email, create a ticket, call your own API.
+Every "AI agent" you've heard about is built on this loop. Next you'll see the exact request and response that make it work.
+
+#Example 1 The complete flow
+User
+  ↓
+"What is Tokyo weather?"
+  ↓
+LLM
+  ↓
+"I should use get_weather(city=Tokyo)"
+  ↓
+Your Python program
+  ↓
+Weather API
+  ↓
+"28°C, cloudy"
+  ↓
+LLM
+  ↓
+"Tokyo is currently 28°C and cloudy."
+
+#Example 2
+So in your CloudOps example:
+
+User:
+
+"Show me pods in cluster ABC"
+
+Model:
+
+"I should call get_eks_pods(cluster_name=ABC)."
+
+Your Python code:
+
+Actually runs kubectl/AWS APIs and returns the pods.
+
+Model:
+
+Converts the returned data into a human-friendly answer.
+
+Key idea: Tool definition = the model-facing description; Python function = the actual implementation.
+
+How the tool loop works
+Lesson
+Tool calling adds one field to the request you already know and one new shape to the response. Here's the whole loop, step by step.
+
+Step 1: describe your tools in the request
+Alongside model and messages, you add a tools list. Each tool describes one function: its name, a description the model reads to decide when to use it, and the parameters it takes.
+
+json
+
+{
+  "model": "deepseek-v4-pro",
+  "messages": [
+    {"role": "user", "content": "What's the weather in Tokyo?"}
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get the current weather for a city",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {"type": "string", "description": "City name"}
+          },
+          "required": ["city"]
+        }
+      }
+    }
+  ]
+}
+The description matters more than it looks. The model picks a tool by reading it, so write it the way you'd explain the function to a coworker.
+
+Step 2: the model replies with a tool call
+Because the question needs live data, the model doesn't answer with text. Its message comes back with an empty content and a tool_calls list naming the function and the arguments it chose:
+
+json
+
+{
+  "choices": [
+    {"message": {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [
+        {"function": {"name": "get_weather", "arguments": "{\"city\": \"Tokyo\"}"}}
+      ]
+    }}
+  ]
+}
+Note arguments is a JSON string. Your code parses it to pull out city.
+
+Step 3: run the function and send the result back
+Your program runs the real get_weather("Tokyo"), then appends the result as a new message with role: "tool" and sends the whole conversation again.
+
+Step 4: the model writes the final answer
+With the tool result in the messages, the model now replies with plain text: "It's 18C and clear in Tokyo." That's the loop: describe, call, run, answer.
+
+In the next task you'll do step 1 and step 2 for real and look at the tool call the model produces.
+
+Wrap-up
+Tool calling follows one loop: describe, call, run, answer. Next, in Let the model call a tool, you'll put that loop into practice. You’re ready to try it.
+
+Example:
+mkdir -p /root/tools
+curl -s "$OPENAI_BASE_URL/v1/chat/completions" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "deepseek-v4-pro", "messages": [{"role": "user", "content": "What is the weather in Paris right now?"}],
+    "tools": [{"type": "function", "function": {
+      "name": "get_weather",
+      "description": "Get the current weather for a city",
+      "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+    }}]}' > /root/tools/weather-call.json
+
+To View:
+jq . /root/tools/weather-call.json
+
+Final Explain:
+Your program runs get_weather with the arguments the model chose, sends the result back as a new message, and the model writes the final answer.
+
+The model can't run code. It only picks the function and the arguments. Your program runs get_weather, appends the result as a tool message, and re-sends the conversation so the model can answer using that result.
