@@ -1,0 +1,54 @@
+AI as a coding assistant
+Lesson
+A coding assistant is the same kind of LLM you've been calling all along, pointed at code and wired into your terminal. You describe what you want in plain language and it produces code, or reads code you already have and tells you about it. Nothing new about the model - what's new is that it sits next to your files and can act on them.
+
+What you ask it to do
+Almost every request to a coding assistant is one of four kinds:
+
+Write. Turn a description into working code. "Write a bash script that lists the five biggest files in a folder."
+Explain. Read code or an error and say what it does or why it broke. "What does this awk line do?" or "Explain this stack trace."
+Fix. Point it at a bug and have it propose the correction. "This script fails when the folder is empty - fix it."
+Refactor. Keep the behavior, improve the shape. "Rename these variables to something clearer" or "split this function in two."
+These are the same language tasks LLMs are good at from the very first topic, just aimed at source code instead of prose.
+
+It works where your code lives
+A chat window makes you copy code out and paste answers back. A terminal assistant skips that: it runs in the same folder as your project, so it can read the files that are already there and write its answer straight to disk.
+
+This VM has two of these ready to go: the claude CLI and the codex CLI, both preinstalled. The next node uses claude.
+
+This is only the surface
+Coding assistants go much deeper than a few one-line asks - working across a whole codebase, running commands, following your project's conventions. That's a subject of its own. A separate claude-code-fundamentals skill covers it properly. Here you just get the basics: enough to use claude from the terminal for everyday coding help.
+
+Using claude in the terminal
+Lesson
+The fastest way to get coding help on this VM is a one-shot ask. The -p flag (for prompt) hands claude a single request, prints the answer, and exits - no session to manage:
+
+bash
+
+
+claude -p "explain what set -e does in a bash script"
+You've already used claude -p to send prompts earlier in this skill. The only difference now is what you ask for: code and explanations instead of plain answers.
+
+Everyday one-shot asks
+These are the kinds of things people actually type:
+
+bash
+
+
+claude -p "write a bash script that prints how much free disk space is left"
+bash
+
+
+claude -p "why does 'permission denied' show up when I run ./deploy.sh"
+bash
+
+
+claude -p "explain this command: find . -name '*.log' -mtime +7 -delete"
+Keep the ask specific and short, the same habit that made your prompts better in the prompting topics. "Write a bash script that lists the five biggest files in the current folder" gets a far better result than "write me a script."
+
+The interactive session
+Type claude on its own, with no -p, and it opens an interactive session instead. You chat back and forth, it remembers the conversation, and it can read and edit files in the current folder as you go. That's the mode you'd use for real work on a project, and it's where the claude-code-fundamentals skill picks up. For quick help, claude -p is enough.
+
+The codex CLI works the same way if you'd rather use it - a one-shot prompt or an interactive session. Pick whichever you like; the examples here use claude.
+
+claude -p "..." hands the assistant a single prompt, prints the answer, and exits - no session to manage. Running claude with no -p opens the interactive session, which is the opposite of a one-shot ask.
