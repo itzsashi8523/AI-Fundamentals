@@ -1,0 +1,197 @@
+What is MCP
+Think of MCP (Model Context Protocol) as a bridge between an AI assistant and external tools/data.
+
+Simple English
+
+Without MCP:
+
+AI can tell you how to create a GitHub issue.
+
+With MCP:
+
+AI can actually create the GitHub issue for you.
+
+For example, MCP can connect AI to:
+
+📁 Your files → read/update files
+🐙 GitHub → create issues, read PRs
+🗄️ Database → run queries
+🎫 Jira → create/update tickets
+
+In one line:
+👉 MCP allows AI to use external tools and data, instead of only talking about them.
+
+Think of MCP like a common language between AI and tools.
+
+MCP Server → Provides/exposes tools and data.
+MCP Client → AI assistant that wants to use those tools.
+MCP Protocol → Common rules both sides follow.
+
+Example:
+
+AI Assistant (Client)
+        ↓
+   MCP Protocol
+        ↓
+GitHub MCP Server
+        ↓
+     GitHub
+
+The GitHub MCP server defines things like:
+
+"I have a tool called create_issue and it needs title and description."
+
+The AI already understands the MCP format, so you don't need to manually write how the AI should call that tool.
+
+In one line:
+👉 MCP provides a standard language so AI clients and tool servers can communicate without custom integration for every tool.
+
+Client and server
+Two roles show up every time:
+
+The client is the assistant that wants to use tools. On this VM, the claude CLI is an MCP client.
+The server is the thing that provides tools and data. There are ready made servers for GitHub, the local filesystem, Postgres, Slack, and many more.
+You point the client at a server once. From then on the model can call that server's tools during a normal conversation, the same way it answers any other request.
+
+You connect the AI client to an MCP server once.
+
+After that, whenever you ask something, the AI can automatically use the tools provided by that MCP server when needed.
+
+Example:
+
+You: "Create a GitHub issue for the Kubernetes problem."
+
+AI
+ ↓
+MCP Client
+ ↓
+GitHub MCP Server
+ ↓
+GitHub → Issue created
+
+claude mcp add and claude mcp list
+Lesson
+The claude CLI manages MCP servers with two commands. claude mcp add registers a server, and claude mcp list shows the servers you have registered. Registering a server just records how to start it, so the assistant can launch it when a conversation needs its tools.
+
+Registering a server
+A server is a small program. Most published ones ship as npm packages and run through npx, which downloads and starts the package on demand (node is already installed on this VM, so there is nothing to install first).
+
+The shape of the command is a name you choose, followed by -- and the command that starts the server:
+
+bash
+
+claude mcp add <name> -- npx -y <server-package>
+The name is how you refer to that server later. After adding one, run:
+
+bash
+
+claude mcp list
+and you'll see each registered server by name.
+
+The GitHub MCP server
+The GitHub server lets the assistant read repositories, issues, and pull requests, and open new ones. It talks to the GitHub API on your behalf, so it needs to prove who you are. That proof is a Personal Access Token (PAT): a string you generate in GitHub's settings that stands in for your password for API access.
+
+Where the token goes
+A PAT is a secret. Treat it the way you'd treat a password: never paste it straight into a command (it lands in your shell history) and never commit it to code. Put it in a file instead. The convention is a file called .env holding one KEY=value line per secret:
+
+bash
+
+GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here
+With the token in a file, you pass it to the server as an environment variable when you register it. claude mcp add takes -e KEY=value for exactly this:
+
+bash
+
+claude mcp add <name> -e GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN -- npx -y <server-package>
+Load the file into your shell first (so $GITHUB_PERSONAL_ACCESS_TOKEN is set), then the token reaches the server without ever appearing inline.
+
+Yes. The confusing part is that putting a token in .env does not automatically make $GITHUB_PERSONAL_ACCESS_TOKEN available in your terminal.
+
+What is .env?
+
+.env is simply a text file used to keep variables/secrets.
+
+For example, inside your project:
+
+cd ~/cloudops-agent
+nano .env
+
+Put your GitHub PAT inside:
+
+GITHUB_PERSONAL_ACCESS_TOKEN=github_pat_xxxxxxxxx
+
+Save it.
+
+Think of it as:
+
+.env file
+   ↓
+stores
+   ↓
+GITHUB_PERSONAL_ACCESS_TOKEN = your GitHub secret
+
+Also make sure .env isn't committed to Git:
+
+echo ".env" >> .gitignore
+Important: load .env
+
+Creating .env doesn't automatically load it into your shell.
+
+You need to load it:
+
+set -a
+source .env
+set +a
+
+Now test:
+
+echo $GITHUB_PERSONAL_ACCESS_TOKEN
+
+You should see your token. For a safer check that doesn't print the secret:
+
+echo ${GITHUB_PERSONAL_ACCESS_TOKEN:+Token is loaded}
+
+Then you can register the MCP server:
+
+claude mcp add github \
+  -e GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_PERSONAL_ACCESS_TOKEN" \
+  -- npx -y <github-mcp-server-package>
+
+The flow is:
+
+GitHub PAT
+   ↓
+.env file
+   ↓ source .env
+Environment variable
+   ↓
+Claude MCP
+   ↓
+GitHub MCP Server
+   ↓
+GitHub API
+
+Lab:
+Task: Give claude access to GitHub through MCP
+Register the GitHub MCP server with claude so the assistant can work with your GitHub account, and store your access token in a file rather than inline.
+
+Do the following:
+
+Generate a GitHub Personal Access Token in your GitHub account settings, then put it in /root/.env on a line named GITHUB_PERSONAL_ACCESS_TOKEN.
+Register the GitHub MCP server under the name github. Use the server package @modelcontextprotocol/server-github, and pass your token to it as an environment variable rather than typing it into the command directly.
+Confirm the server shows up in the list of registered servers.
+For example, first store the token in /root/.env:
+
+bash
+
+echo "GITHUB_PERSONAL_ACCESS_TOKEN=ghp_your_token_here" >> /root/.env
+source /root/.env
+export GITHUB_PERSONAL_ACCESS_TOKEN
+Then register the server, handing it the token with -e instead of pasting it inline, and list the registered servers to confirm:
+
+bash
+
+claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN -- npx -y @modelcontextprotocol/server-github
+claude mcp list
+Swap in your own token from GitHub settings.
+
+Once it's registered, you can try it out: ask claude something like List my most recently updated GitHub repositories and watch it call the server. That exploration is optional and is not graded.
